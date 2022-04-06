@@ -56,7 +56,6 @@ def get_PFM(jaspar_database_pathway):#获得TF位置频率矩阵
                     gene_logo[id][num][1] += str(format(math.log(float(bases[num][base_type])/sum/3*10,math.e),".3f"))+"|"
             gene_logo[id][num][0] = gene_logo[id][num][0].strip("|")
             gene_logo[id][num][1] = gene_logo[id][num][1].strip("|")
-    print(gene_logo)
     return gene_logo
 
 def get_threshold_80(PFMs):#
@@ -102,7 +101,7 @@ def get_gene_promoter(genome_file,gff_file) :#输入基因组文件和gff文件�
         direction = gene_gff[id][3]
         if direction == "+":
             promoter_fasta[id] = genome[chr][int(start)-2500:int(start)]
-        else :
+        if direction == "-":
             promoter_fasta[id] = genome[chr][int(end):int(end)+2500]
             promoter_fasta[id] = promoter_fasta[id][::-1]
     return promoter_fasta
@@ -120,11 +119,13 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
     for TF_id in PFMs:  
         promoter_motif_sites[gene_id][TF_id] = []
         longs = len(PFMs[TF_id])
-        fasta = promoter_fastas[gene_id]
-        F_fasta = promoter_fastas[gene_id][::-1]
-        for num in range(len(fasta)-longs):
+        fasta = promoter_fastas[gene_id]#正向
+        F_fasta = promoter_fastas[gene_id][::-1]#反向
+        for num in range(len(fasta)-longs):#正向
             sum = 0
+            R_sum = 0
             search_fasta = fasta[num:num+longs]
+            R_search_fasta = search_fasta.replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()
             for base in range(len(search_fasta)):
                 A_type = PFMs[TF_id][base][1].split("|")[0]
                 C_type = PFMs[TF_id][base][1].split("|")[1]
@@ -132,23 +133,37 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
                 T_type = PFMs[TF_id][base][1].split("|")[3]
                 if search_fasta[base] == "A":
                     sum += float(A_type)
+                    R_sum += float(T_type)#互补
                 if search_fasta[base] == "G":
                     sum += float(G_type)
+                    R_sum += float(C_type)
                 if search_fasta[base] == "C":
                     sum += float(C_type)
+                    R_sum += float(G_type)
                 if search_fasta[base] == "T":
                     sum += float(T_type)
+                    R_sum += float(A_type)
             if sum >= float(threshold_80_logo[TF_id])*threshold:
                 score = format(sum/float(threshold_80_logo[TF_id]),".3f")
-                if gene_gff[gene_id][3] == "+":
+                if gene_gff[gene_id][3] == "+":#
                     start = int(gene_gff[gene_id][1])
                     promoter_motif_sites[gene_id][TF_id].append(str(start-2500+num+1)+"\t"+str(start-2500+longs+num+1)+"\t+\t"+search_fasta+"\t"+str(score))
-                if gene_gff[gene_id][3] == "-":
+                if gene_gff[gene_id][3] == "-":#
                     end = int(gene_gff[gene_id][2])
-                    promoter_motif_sites[gene_id][TF_id].append(str(end+num+1)+"\t"+str(end+longs+num+1)+"\t+\t"+search_fasta+"\t"+str(score))
-        for num in range(len(fasta)-longs):
+                    promoter_motif_sites[gene_id][TF_id].append(str(end+num+1)+"\t"+str(end+longs+num+1)+"\t+R\t"+search_fasta.replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(score))
+            if R_sum  >= float(threshold_80_logo[TF_id])*threshold:
+                R_score = format(R_sum/float(threshold_80_logo[TF_id]),".3f")
+                if gene_gff[gene_id][3] == "+":#
+                    start = int(gene_gff[gene_id][1])
+                    promoter_motif_sites[gene_id][TF_id].append(str(start-2500+num+1)+"\t"+str(start-2500+longs+num+1)+"\t+R\t"+R_search_fasta.replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(R_score))
+                if gene_gff[gene_id][3] == "-":#
+                    end = int(gene_gff[gene_id][2])
+                    promoter_motif_sites[gene_id][TF_id].append(str(end+num+1)+"\t"+str(end+longs+num+1)+"\t+\t"+R_search_fasta+"\t"+str(R_score))
+        for num in range(len(fasta)-longs):#反向
             sum = 0
+            R_sum = 0
             F_search_fasta = F_fasta[num:num+longs]
+            RF_search_fasta = F_search_fasta.replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()
             for base in range(len(F_search_fasta)):
                 A_type = PFMs[TF_id][base][1].split("|")[0]
                 C_type = PFMs[TF_id][base][1].split("|")[1]
@@ -156,22 +171,34 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
                 T_type = PFMs[TF_id][base][1].split("|")[3]
                 if F_search_fasta[base] == "A":
                     sum += float(A_type)
+                    R_sum += float(T_type)#互补
                 if F_search_fasta[base] == "G":
                     sum += float(G_type)
+                    R_sum += float(C_type)#互补
                 if F_search_fasta[base] == "C":
                     sum += float(C_type)
+                    R_sum += float(G_type)#互补
                 if F_search_fasta[base] == "T":
                     sum += float(T_type)
+                    R_sum += float(A_type)#互补
             if sum >= float(threshold_80_logo[TF_id])*threshold:
                 score = format(sum/float(threshold_80_logo[TF_id]),".3f")
-                if gene_gff[gene_id][3] == "+":
+                if gene_gff[gene_id][3] == "+":#
                     start = int(gene_gff[gene_id][1])
-                    promoter_motif_sites[gene_id][TF_id].append(str(start-num-1-longs)+"\t"+str(start-num-1)+"\t-\t"+F_search_fasta+"\t"+str(score))
+                    promoter_motif_sites[gene_id][TF_id].append(str(start-num-1-longs)+"\t"+str(start-num-1)+"\t-\t"+F_search_fasta[::-1]+"\t"+str(score))
+                if gene_gff[gene_id][3] == "-":#
+                    end = int(gene_gff[gene_id][2])
+                    promoter_motif_sites[gene_id][TF_id].append(str(end+2500-num-1)+"\t"+str(end+2500-longs-num-1)+"\t-R\t"+F_search_fasta[::-1].replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(score))
+            if R_sum >= float(threshold_80_logo[TF_id])*threshold:
+                R_score = format(R_sum/float(threshold_80_logo[TF_id]),".3f")
+                if gene_gff[gene_id][3] == "+":#
+                    start = int(gene_gff[gene_id][1])
+                    promoter_motif_sites[gene_id][TF_id].append(str(start-num-1-longs)+"\t"+str(start-num-1)+"\t-R\t"+F_search_fasta[::-1]+"\t"+str(R_score))
                 if gene_gff[gene_id][3] == "-":
                     end = int(gene_gff[gene_id][2])
-                    promoter_motif_sites[gene_id][TF_id].append(str(end+2500-num-1)+"\t"+str(end+2500-longs-num-1)+"\t-\t"+F_search_fasta+"\t"+str(score))
-    if not promoter_motif_sites[gene_id][TF_id] :
-        del promoter_motif_sites[gene_id][TF_id]
+                    promoter_motif_sites[gene_id][TF_id].append(str(end+2500-num-1)+"\t"+str(end+2500-longs-num-1)+"\t-\t"+F_search_fasta[::-1].replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(R_score))        
+        if not promoter_motif_sites[gene_id][TF_id] :
+            del promoter_motif_sites[gene_id][TF_id]
     return promoter_motif_sites
 
 def write_TF_sites(promoter_TF_sites):#书写结果文件  
@@ -242,7 +269,7 @@ parser.add_argument("-database", type=str,default="/share/home/stu_chaikun/data/
 parser.add_argument("-genome", type=str)#基因组文件
 parser.add_argument("-gff", type=str)#gff文件
 parser.add_argument("-id", type=str)#geneid文件
-parser.add_argument("-threshold", type=float, default=0.8)#geneid文件
+parser.add_argument("-threshold", type=float, default=0.8)#阈值
 parser.add_argument("-thread", type=int, default=10)#并行进程数
 parser.add_argument("-out", type=str, default="out_file")#输出文件
 args = parser.parse_args()
