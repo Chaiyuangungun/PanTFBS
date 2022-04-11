@@ -1,3 +1,4 @@
+from email.errors import NoBoundaryInMultipartDefect
 import re
 import argparse
 from functools import partial
@@ -201,15 +202,18 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
             del promoter_motif_sites[gene_id][TF_id]
     return promoter_motif_sites
 
-def write_TF_sites(promoter_TF_sites):#书写结果文件  
+def write_TF_sites(promoter_TF_sites,out_file):#书写结果文件  
     new_promoter_TF_sites = {}
+    TF_ids = []
     for dict in promoter_TF_sites:
         for gene_id in dict:
             new_promoter_TF_sites[gene_id] = {}
             for TF_id in dict[gene_id]: 
                 new_promoter_TF_sites[gene_id][TF_id] = dict[gene_id][TF_id]
+                TF_ids.append(TF_id)
             new_promoter_TF_sites[gene_id][TF_id] = list(set(new_promoter_TF_sites[gene_id][TF_id]))
-    with open(out_file+".txt","w") as f1:
+    TF_ids = list(set(TF_ids))
+    with open(out_file+".TFsites","w") as f1:
         for  gene_id in new_promoter_TF_sites:
             f1.write(gene_id+"\t")
             for TF_id in new_promoter_TF_sites[gene_id]:
@@ -217,9 +221,31 @@ def write_TF_sites(promoter_TF_sites):#书写结果文件
             f1.write("\n")
             for TF_id in new_promoter_TF_sites[gene_id]:   
                 for site in new_promoter_TF_sites[gene_id][TF_id]:
-                    f1.write(TF_id+" : "+site+"\n")
-    return new_promoter_TF_sites
+                    f1.write(TF_id+" : "+site+"\n")    
+    return new_promoter_TF_sites,TF_ids
 
+####鉴定完转录因子结合位点肯定要找出差异，比如我有一组经过胁迫处理的品种，有些差异表达基因，我需要搞清楚某个转录因子调控那个基因，而且我又可以在差异表达
+####的基因中找到这个转录因子，那么就可以绘制一个调控网络出来，比如某个转录因子可能在这个胁迫条件下调控某些基因以应对这种胁迫环境
+def get_TF_Gene(new_promoter_TF_sites,TF_ids):##new_promoter_TF_sites[gene_id][TF_id]
+    TF_Gene_ids = {}
+    for id in TF_ids:
+        TF_Gene_ids[id] = []
+        for gene_id in TF_Gene_ids:
+            for TF_id in new_promoter_TF_sites[gene_id] :  
+                if TF_id == id:
+                    TF_Gene_ids[id].append(gene_id)
+    return TF_Gene_ids
+
+def write_TF_Genes(out_file,TF_Gene_ids):
+    with open(out_file+".TFgenes","w") as f1:
+        for TFid in TF_Gene_ids:
+            f1.write(TFid+"\t"+len(TF_Gene_ids[TFid])+"\t")
+            for geneid in TF_Gene_ids[TFid]:
+                f1.write(geneid+"\t")
+            f1.write("\n")
+####得到一个文件，以TFgenes为后缀，每行第一列记录转录因子id，第二列记录该转录因子在提供的基因id列表中，多少个基因有该转录因子的结合位点；后边列数记录geneid
+
+#####TF_sites更新为转录因子名字对应该转录因子在启动子区的起始终止位置
 def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway) :
     gene_ids = []
     TF_ids = []
@@ -256,10 +282,6 @@ def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway) :
                     new_site_direction = sites[2]
                 new_site = new_site_start+"\t"+new_site_end+"\t"+new_site_direction
                 TF_sites[gene_id][TF_id_name[TF_id]].append(new_site)  
-        
-    #####TF_sites更新为转录因子名字对应该转录因子在启动子区的起始终止位置
-
-
 
 #######################################################
 ########################设置参数########################
@@ -291,7 +313,6 @@ global  threshold_80_logo
 threshold_80_logo = get_threshold_80(PFMs)
 promoter_fasta = get_gene_promoter(genome_file,gff_file)
 global promoter_fastas 
-global sum_num
 global TF_site
 gene_ids = get_gene_id(gene_ids_file)
 TF_site = {}
@@ -300,7 +321,9 @@ promoter_fastas = promoter_fasta
 pool = Pool(processes=thread_num)
 pfunc = partial(get_promoter_motif_sites,PFMs)
 promoter_TF_sites = pool.map(pfunc,gene_ids)
-new_promoter_TF_sites = write_TF_sites(promoter_TF_sites)
-draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway)
+new_promoter_TF_sites,TF_ids = write_TF_sites(promoter_TF_sites,out_file)
+TF_Gene_ids = get_TF_Gene(new_promoter_TF_sites,TF_ids)
+write_TF_Genes(out_file,TF_Gene_ids)
+#draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway)
 end_time = time.time()
 print(end_time-start_time)
