@@ -278,7 +278,7 @@ def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway,out_file) :
 ########################设置参数########################
 ######################################################
 parser = argparse.ArgumentParser(description='manual to this script')
-parser.add_argument("-d","--database", type=str,default="/share/home/stu_chaikun/data/Script/python_Script/jaspar_database.csv")#jaspar数据库
+parser.add_argument("-d","--database", type=str,default="jaspar_database.csv")#jaspar数据库
 parser.add_argument("-g","--genome", type=str)#基因组文件
 parser.add_argument("-a","--gff", type=str)#gff文件
 parser.add_argument("-i","--id", type=str)#geneid文件
