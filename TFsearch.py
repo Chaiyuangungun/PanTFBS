@@ -1,13 +1,10 @@
-from email.errors import NoBoundaryInMultipartDefect
-import re
 import argparse
 from functools import partial
 from multiprocessing.pool import Pool
 import time
 import math
 
-#######################################################
-########################编写函数########################
+
 ######################################################
 def get_PFM(jaspar_database_pathway):#获得TF位置频率矩阵
     base_A = {}
@@ -73,7 +70,7 @@ def get_threshold_80(PFMs):#
         threshold_80_result[id] = format(sum,".3f") 
     return threshold_80_result
 
-def get_gene_promoter(genome_file,gff_file) :#输入基因组文件和gff文件，获得每个基因的启动子区（上游2500bp）序列字典
+def get_gene_promoter(genome_file,gff_file) :#输入基因组文件和gff文件，获得每个基因的启动子区（上游2000bp）序列字典
     promoter_fasta = {}    
     global gene_gff
     with open(genome_file,"r") as f1:
@@ -101,9 +98,9 @@ def get_gene_promoter(genome_file,gff_file) :#输入基因组文件和gff文件�
         end = gene_gff[id][2]
         direction = gene_gff[id][3]
         if direction == "+":
-            promoter_fasta[id] = genome[chr][int(start)-2500:int(start)]
+            promoter_fasta[id] = genome[chr][int(start)-2000:int(start)]
         if direction == "-":
-            promoter_fasta[id] = genome[chr][int(end):int(end)+2500]
+            promoter_fasta[id] = genome[chr][int(end):int(end)+2000]
             promoter_fasta[id] = promoter_fasta[id][::-1]
     return promoter_fasta
 
@@ -148,18 +145,16 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
                 score = format(sum/float(threshold_80_logo[TF_id]),".3f")
                 if gene_gff[gene_id][3] == "+":#
                     start = int(gene_gff[gene_id][1])
-                    promoter_motif_sites[gene_id][TF_id].append(str(start-2500+num+1)+"\t"+str(start-2500+longs+num+1)+"\t+\t"+search_fasta+"\t"+str(score))
-                if gene_gff[gene_id][3] == "-":#
-                    end = int(gene_gff[gene_id][2])
-                    promoter_motif_sites[gene_id][TF_id].append(str(end+num+1)+"\t"+str(end+longs+num+1)+"\t+R\t"+search_fasta.replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(score))
+                    chr = gene_gff[gene_id][0]
+                    promoter_motif_sites[gene_id][TF_id].append(chr+"\t"+str(start-2000+num+1)+"\t"+str(start-2000+longs+num+1)+"\t+\t"+search_fasta+"\t"+str(score))
+
             if R_sum  >= float(threshold_80_logo[TF_id])*threshold:
                 R_score = format(R_sum/float(threshold_80_logo[TF_id]),".3f")
-                if gene_gff[gene_id][3] == "+":#
-                    start = int(gene_gff[gene_id][1])
-                    promoter_motif_sites[gene_id][TF_id].append(str(start-2500+num+1)+"\t"+str(start-2500+longs+num+1)+"\t+R\t"+R_search_fasta.replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(R_score))
+                
                 if gene_gff[gene_id][3] == "-":#
                     end = int(gene_gff[gene_id][2])
-                    promoter_motif_sites[gene_id][TF_id].append(str(end+num+1)+"\t"+str(end+longs+num+1)+"\t+\t"+R_search_fasta+"\t"+str(R_score))
+                    chr = gene_gff[gene_id][0]
+                    promoter_motif_sites[gene_id][TF_id].append(chr+"\t"+str(end+num+1)+"\t"+str(end+longs+num+1)+"\t+\t"+R_search_fasta+"\t"+str(R_score))
         for num in range(len(fasta)-longs):#反向
             sum = 0
             R_sum = 0
@@ -184,20 +179,17 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
                     R_sum += float(A_type)#互补
             if sum >= float(threshold_80_logo[TF_id])*threshold:
                 score = format(sum/float(threshold_80_logo[TF_id]),".3f")
-                if gene_gff[gene_id][3] == "+":#
-                    start = int(gene_gff[gene_id][1])
-                    promoter_motif_sites[gene_id][TF_id].append(str(start-num-1-longs)+"\t"+str(start-num-1)+"\t-\t"+F_search_fasta[::-1]+"\t"+str(score))
                 if gene_gff[gene_id][3] == "-":#
                     end = int(gene_gff[gene_id][2])
-                    promoter_motif_sites[gene_id][TF_id].append(str(end+2500-num-1)+"\t"+str(end+2500-longs-num-1)+"\t-R\t"+F_search_fasta[::-1].replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(score))
+                    chr = gene_gff[gene_id][0]
+                    promoter_motif_sites[gene_id][TF_id].append(chr+"\t"+str(end+2000-num-1)+"\t"+str(end+2000-longs-num-1)+"\t-\t"+F_search_fasta[::-1].replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(score))
             if R_sum >= float(threshold_80_logo[TF_id])*threshold:
                 R_score = format(R_sum/float(threshold_80_logo[TF_id]),".3f")
                 if gene_gff[gene_id][3] == "+":#
                     start = int(gene_gff[gene_id][1])
-                    promoter_motif_sites[gene_id][TF_id].append(str(start-num-1-longs)+"\t"+str(start-num-1)+"\t-R\t"+F_search_fasta[::-1]+"\t"+str(R_score))
-                if gene_gff[gene_id][3] == "-":
-                    end = int(gene_gff[gene_id][2])
-                    promoter_motif_sites[gene_id][TF_id].append(str(end+2500-num-1)+"\t"+str(end+2500-longs-num-1)+"\t-\t"+F_search_fasta[::-1].replace("A","t").replace("T","a").replace("G","c").replace("C","g").upper()+"\t"+str(R_score))        
+                    chr = gene_gff[gene_id][0]
+                    promoter_motif_sites[gene_id][TF_id].append(chr+"\t"+str(start-num-1-longs)+"\t"+str(start-num-1)+"\t-\t"+F_search_fasta[::-1]+"\t"+str(R_score))
+   
         if not promoter_motif_sites[gene_id][TF_id] :
             del promoter_motif_sites[gene_id][TF_id]
     return promoter_motif_sites
@@ -213,15 +205,12 @@ def write_TF_sites(promoter_TF_sites,out_file):#书写结果文件
                 TF_ids.append(TF_id)
             new_promoter_TF_sites[gene_id][TF_id] = list(set(new_promoter_TF_sites[gene_id][TF_id]))
     TF_ids = list(set(TF_ids))
-    with open(out_file+".TFsites","w") as f1:
+    with open(out_file+".TFids.genomesites","w") as f1:
+        f1.write("geneid\tTFid\tchr\tstart\tend\tdirection\tTFseq\tscore\n")
         for  gene_id in new_promoter_TF_sites:
-            f1.write(gene_id+"\t")
-            for TF_id in new_promoter_TF_sites[gene_id]:
-                f1.write(TF_id+"\t")
-            f1.write("\n")
             for TF_id in new_promoter_TF_sites[gene_id]:   
                 for site in new_promoter_TF_sites[gene_id][TF_id]:
-                    f1.write(TF_id+" : "+site+"\n")    
+                    f1.write(gene_id+"\t"+TF_id+"\t"+site+"\n")    
     return new_promoter_TF_sites,TF_ids
 
 ####鉴定完转录因子结合位点肯定要找出差异，比如我有一组经过胁迫处理的品种，有些差异表达基因，我需要搞清楚某个转录因子调控那个基因，而且我又可以在差异表达
@@ -230,23 +219,16 @@ def get_TF_Gene(new_promoter_TF_sites,TF_ids):##new_promoter_TF_sites[gene_id][T
     TF_Gene_ids = {}
     for id in TF_ids:
         TF_Gene_ids[id] = []
-        for gene_id in TF_Gene_ids:
+        for gene_id in new_promoter_TF_sites:
             for TF_id in new_promoter_TF_sites[gene_id] :  
                 if TF_id == id:
                     TF_Gene_ids[id].append(gene_id)
     return TF_Gene_ids
 
-def write_TF_Genes(out_file,TF_Gene_ids):
-    with open(out_file+".TFgenes","w") as f1:
-        for TFid in TF_Gene_ids:
-            f1.write(TFid+"\t"+len(TF_Gene_ids[TFid])+"\t")
-            for geneid in TF_Gene_ids[TFid]:
-                f1.write(geneid+"\t")
-            f1.write("\n")
 ####得到一个文件，以TFgenes为后缀，每行第一列记录转录因子id，第二列记录该转录因子在提供的基因id列表中，多少个基因有该转录因子的结合位点；后边列数记录geneid
 
 #####TF_sites更新为转录因子名字对应该转录因子在启动子区的起始终止位置
-def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway) :
+def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway,out_file) :
     gene_ids = []
     TF_ids = []
     TF_id_name = {}
@@ -273,27 +255,36 @@ def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway) :
             for site in new_promoter_TF_sites[gene_id][TF_id]:
                 sites = site.strip().split()
                 if direction == "+":
-                    new_site_start = str(int(sites[0]) - int(start))
-                    new_site_end = str(int(sites[1]) - int(start))
-                    new_site_direction = sites[2]
+                    new_site_start = str(int(sites[1]) - int(start))
+                    new_site_end = str(int(sites[2]) - int(start))
+                    new_site_direction = sites[3]
                 if direction == "-":
-                    new_site_start = str(int(sites[0]) - int(end))
-                    new_site_end = str(int(sites[1]) - int(end))
-                    new_site_direction = sites[2]
-                new_site = new_site_start+"\t"+new_site_end+"\t"+new_site_direction
-                TF_sites[gene_id][TF_id_name[TF_id]].append(new_site)  
+                    new_site_start = str(int(end) - int(sites[2]))
+                    new_site_end = str(int(end) - int(sites[1]))
+                    new_site_direction = sites[3]
+                    new_site_seq = sites[4]
+                    new_site_score = sites[5]
+                new_site = new_site_start+"\t"+new_site_end+"\t"+new_site_direction+"\t"+new_site_seq+"\t"+new_site_score
+                TF_sites[gene_id][TF_id_name[TF_id]].append(new_site)  ###TF_sites改TF_id_name为family
+    with open(out_file+".TFname.promotersites","w") as f1:
+        f1.write("geneid\tTFname\tstart\tend\tdirection\tTFseq\tscore\n")
+        for geneid in TF_sites:
+            for TFname in TF_sites[geneid]:
+                for newsite in TF_sites[geneid][TFname]:
+                    f1.write(geneid+"\t"+TFname+"\t"+"\t"+newsite+"\n")
+                
 
 #######################################################
 ########################设置参数########################
 ######################################################
 parser = argparse.ArgumentParser(description='manual to this script')
-parser.add_argument("-database", type=str,default="/share/home/stu_chaikun/data/Script/python_Script/jaspar_database.csv")#jaspar数据库
-parser.add_argument("-genome", type=str)#基因组文件
-parser.add_argument("-gff", type=str)#gff文件
-parser.add_argument("-id", type=str)#geneid文件
-parser.add_argument("-threshold", type=float, default=0.8)#阈值
-parser.add_argument("-thread", type=int, default=10)#并行进程数
-parser.add_argument("-out", type=str, default="out_file")#输出文件
+parser.add_argument("-d","--database", type=str,default="/share/home/stu_chaikun/data/Script/python_Script/jaspar_database.csv")#jaspar数据库
+parser.add_argument("-g","--genome", type=str)#基因组文件
+parser.add_argument("-a","--gff", type=str)#gff文件
+parser.add_argument("-i","--id", type=str)#geneid文件
+parser.add_argument("-k","--threshold", type=float, default=0.8)#阈值
+parser.add_argument("-t","--thread", type=int, default=10)#并行进程数
+parser.add_argument("-o","--out", type=str, default="out_file")#输出文件
 args = parser.parse_args()
 
 #######################################################
@@ -323,7 +314,6 @@ pfunc = partial(get_promoter_motif_sites,PFMs)
 promoter_TF_sites = pool.map(pfunc,gene_ids)
 new_promoter_TF_sites,TF_ids = write_TF_sites(promoter_TF_sites,out_file)
 TF_Gene_ids = get_TF_Gene(new_promoter_TF_sites,TF_ids)
-write_TF_Genes(out_file,TF_Gene_ids)
-#draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway)
+draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway,out_file)
 end_time = time.time()
 print(end_time-start_time)
