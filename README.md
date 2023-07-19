@@ -13,7 +13,7 @@ software
         gmap -D . -d DB -f 2 -n 1 -t 20 ref.cds > genomeN.gff3
 2、Searching TF binding sites 
 
-        python3 TFSsearch -g genomeN.fasta -a genomeN.gff3 -i geneid.file -k 0.8 -t 10 -o outfile.prefix -d jaspar_database.csv
+        python3 TFBS.py -g genomeN.fasta -a genomeN.gff3 -i geneid.file -k 0.8 -t 10 -o outfile.prefix -d jaspar_database.csv
                 -g genome file
                 -a GMAP gff file
                 -i geneid file for searching
@@ -23,7 +23,7 @@ software
                 -0 outfile prefix 
 3、 numerical differences of TF in sample
        
-        python3 DTFN.py -s Sample_type_file -i geneid.file -d jaspar_database.csv -o outfile.prefix 
+        python3 NDTF.py -s Sample_type_file -i geneid.file -d jaspar_database.csv -o outfile.prefix 
                 -s Classification file for samples
                 -i geneid file for searching
                 -d jaspar database (default=jaspar_database.csv)
