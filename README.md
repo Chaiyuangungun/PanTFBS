@@ -28,7 +28,7 @@ software
                 -i geneid file for searching
                 -d jaspar database (default=jaspar_database.csv)
                 -o outfile prefix 
-inputfile:
+input file:
 
         geneid.file :
         example:
@@ -45,7 +45,7 @@ inputfile:
          B        sample5
          B        sample6
 
-outfile:
+output file:
 
         out.TFids.genomesites : Transcription factor binding site location on the genome
         out.TFname.promotersites : Transcription factor binding sites are based on the location of gene start sites
