@@ -3,7 +3,7 @@ from functools import partial
 from multiprocessing.pool import Pool
 import time
 import math
-
+from scipy.stats import levene, ttest_ind
 
 ######################################################
 def get_PFM(jaspar_database_pathway):#获得TF位置频率矩阵
@@ -91,6 +91,8 @@ def get_gene_promoter(genome_file,gff_file) :#输入基因组文件和gff文件�
                 end = lines[4]
                 direction = lines[6]
                 id = lines[-1].split(";")[0].replace("ID=","")
+                if "path" in id :
+                    id = id.split(".")[0]
                 gene_gff[id] = [chr,start,end,direction]
     for id in gene_gff:
         chr = gene_gff[id][0]
@@ -117,8 +119,11 @@ def get_promoter_motif_sites(PFMs,gene_id):#启动子区的具体TF结合位点
     for TF_id in PFMs:  
         promoter_motif_sites[gene_id][TF_id] = []
         longs = len(PFMs[TF_id])
-        fasta = promoter_fastas[gene_id]#正向
-        F_fasta = promoter_fastas[gene_id][::-1]#反向
+        try:
+            fasta = promoter_fastas[gene_id]#正向
+            F_fasta = promoter_fastas[gene_id][::-1]#反向
+        except:
+            continue
         for num in range(len(fasta)-longs):#正向
             sum = 0
             R_sum = 0
@@ -205,7 +210,7 @@ def write_TF_sites(promoter_TF_sites,out_file):#书写结果文件
                 TF_ids.append(TF_id)
             new_promoter_TF_sites[gene_id][TF_id] = list(set(new_promoter_TF_sites[gene_id][TF_id]))
     TF_ids = list(set(TF_ids))
-    with open(out_file+".TFids.genomesites","w") as f1:
+    with open(out_file+".TFids.genome.sites","w") as f1:
         f1.write("geneid\tTFid\tchr\tstart\tend\tdirection\tTFseq\tscore\n")
         for  gene_id in new_promoter_TF_sites:
             for TF_id in new_promoter_TF_sites[gene_id]:   
@@ -246,9 +251,12 @@ def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway,out_file) :
         for TF_id in new_promoter_TF_sites[gene_id]:
             TF_ids.append(TF_id)
     for gene_id in gene_ids:
-        start = gene_gff[gene_id][1]
-        end = gene_gff[gene_id][2]
-        direction = gene_gff[gene_id][3]
+        try:
+            start = gene_gff[gene_id][1]
+            end = gene_gff[gene_id][2]
+            direction = gene_gff[gene_id][3]
+        except:
+            continue
         TF_sites[gene_id] = {}
         for TF_id in new_promoter_TF_sites[gene_id]:
             TF_sites[gene_id][TF_id_name[TF_id]] = []
@@ -266,19 +274,18 @@ def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway,out_file) :
                     new_site_score = sites[5]
                 new_site = new_site_start+"\t"+new_site_end+"\t"+new_site_direction+"\t"+new_site_seq+"\t"+new_site_score
                 TF_sites[gene_id][TF_id_name[TF_id]].append(new_site)  ###TF_sites改TF_id_name为family
-    with open(out_file+".TFname.promotersites","w") as f1:
+    with open(out_file+".TFname.promoter.sites","w") as f1:
         f1.write("geneid\tTFname\tstart\tend\tdirection\tTFseq\tscore\n")
         for geneid in TF_sites:
             for TFname in TF_sites[geneid]:
                 for newsite in TF_sites[geneid][TFname]:
                     f1.write(geneid+"\t"+TFname+"\t"+"\t"+newsite+"\n")
-                
 
 #######################################################
 ########################设置参数########################
 ######################################################
 parser = argparse.ArgumentParser(description='manual to this script')
-parser.add_argument("-d","--database", type=str,default="jaspar_database.csv")#jaspar数据库
+parser.add_argument("-d","--database", type=str,default="/share/home/stu_chaikun/data/Script/python_Script/jaspar_database.csv")#jaspar数据库
 parser.add_argument("-g","--genome", type=str)#基因组文件
 parser.add_argument("-a","--gff", type=str)#gff文件
 parser.add_argument("-i","--id", type=str)#geneid文件
