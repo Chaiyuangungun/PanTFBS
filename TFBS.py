@@ -266,6 +266,8 @@ def draw(new_promoter_TF_sites,gene_gff,jaspar_database_pathway,out_file) :
                     new_site_start = str(int(sites[1]) - int(start))
                     new_site_end = str(int(sites[2]) - int(start))
                     new_site_direction = sites[3]
+                    new_site_seq = sites[4]
+                    new_site_score = sites[5]
                 if direction == "-":
                     new_site_start = str(int(end) - int(sites[2]))
                     new_site_end = str(int(end) - int(sites[1]))
