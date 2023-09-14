@@ -11,6 +11,7 @@ def get_gene_id(gene_ids_file):#获得要查找的gene_id
 
 def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
     TFnums = {}
+    TFsums = {}
     TFnames = []
     samples = []
     family = {}
@@ -39,10 +40,13 @@ def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
         TFnames = list(set(TFnames))
     for sample in samples:
         TFnums[sample] = {}
+        TFsums[sample] = {}
         for geneid in gene_ids:
             TFnums[sample][geneid] = {}
+            TFsums[sample][geneid] = {}
             for TFname in TFnames:
                 TFnums[sample][geneid][TFname] = 0
+                TFsums[sample][geneid][TFname] = 0
     for sample in samples:
         with open(sample+".TFname.promoter.sites","r") as f3:
             for line in f3:
@@ -51,18 +55,16 @@ def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
                     continue
                 geneid = lines[0]
                 TFname = lines[1]
-                TFnums[sample][geneid][TFname] += 1 
+                TFnums[sample][geneid][TFname] = 1 
+                TFsums[sample][geneid][TFname] += 1
     nums = {}
     Pvalue = {}    
-    LogFC = {} 
     for geneid in gene_ids:
         nums[geneid] = {}
         Pvalue[geneid] = {}
-        LogFC[geneid] = {}
         for TFname in TFnames:
             nums[geneid][TFname] = {}
             Pvalue[geneid][TFname] = {}
-            LogFC[geneid][TFname] = {}
             for fam in fams:
                 nums[geneid][TFname][fam] = []
                 for sample in family[fam]:
@@ -75,22 +77,20 @@ def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
             else:
                 equal_var = False
             Pvalue[geneid][TFname] = ttest_ind(ref_list, alt_list, equal_var=equal_var).pvalue
-            LogFC[geneid][TFname] = abs(math.log(np.mean(ref_list)+1,2) - math.log(np.mean(alt_list)+1,2))
-    print(LogFC)                                    
     with open(out_file+".Pvalue","w") as f:
         f.write("geneid\tTFname\t")
         for sample in samples:
             f.write(sample+"\t")
-        f.write("Pvalue\tLogFC\n")
+        f.write("Pvalue\n")
         for geneid in gene_ids:
             for TFname in TFnames:
-                if Pvalue[geneid][TFname] < 0.05 and LogFC[geneid][TFname] >=1:
+                if Pvalue[geneid][TFname] < 0.05 :
                     f.write(geneid+"\t")
                     f.write(TFname+"\t")
                     for sample in samples:
-                        f.write(str(TFnums[sample][geneid][TFname])+"\t")
+                        f.write(TFsums[sample][geneid][TFname]+"\t")
                     f.write(str(Pvalue[geneid][TFname])+"\t")
-                    f.write(str(LogFC[geneid][TFname])+"\n")
+                  
 
 parser = argparse.ArgumentParser(description='manual to this script')
 parser.add_argument("-d","--database", type=str,default="/share/home/stu_chaikun/data/Script/python_Script/jaspar_database.csv")#jaspar数据库
@@ -105,4 +105,4 @@ samples_file = args.samples
 out_file = args.out
 
 gene_ids = get_gene_id(gene_ids_file)
-write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file) 
+write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)
