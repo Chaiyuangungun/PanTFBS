@@ -59,24 +59,36 @@ def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
                 TFsums[sample][geneid][TFname] += 1
     nums = {}
     Pvalue = {}    
+    newnums = {}
+    TPvalue = {}
     for geneid in gene_ids:
         nums[geneid] = {}
+        newnums[geneid] = {}
         Pvalue[geneid] = {}
+        TPvalue[geneid] = {}
+        
         for TFname in TFnames:
             nums[geneid][TFname] = {}
             Pvalue[geneid][TFname] = {}
+            newnums[geneid][TFname] = {}
+            TPvalue[geneid][TFname] = {}
             for fam in fams:
                 nums[geneid][TFname][fam] = []
+                newnums[geneid][TFname][fam] = []
                 for sample in family[fam]:
                     nums[geneid][TFname][fam].append(TFnums[sample][geneid][TFname])
+                    newnums[geneid][TFname][fam].append(TFsums[sample][geneid][TFname])
             ref_list = nums[geneid][TFname][fams[0]]
             alt_list = nums[geneid][TFname][fams[1]]
+            Tref_list = newnums[geneid][TFname][fams[0]]
+            Talt_list = newnums[geneid][TFname][fams[1]]
             levene_val = levene(ref_list, alt_list).pvalue
             if levene_val > 0.05:
                 equal_var = True
             else:
                 equal_var = False
             Pvalue[geneid][TFname] = ttest_ind(ref_list, alt_list, equal_var=equal_var).pvalue
+            TPvalue[geneid][TFname] = ttest_ind(Tref_list, Talt_list, equal_var=equal_var).pvalue
     with open(out_file+".Pvalue","w") as f:
         f.write("geneid\tTFname\t")
         for sample in samples:
@@ -88,8 +100,8 @@ def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
                     f.write(geneid+"\t")
                     f.write(TFname+"\t")
                     for sample in samples:
-                        f.write(TFsums[sample][geneid][TFname]+"\t")
-                    f.write(str(Pvalue[geneid][TFname])+"\n")
+                        f.write(str(TFsums[sample][geneid][TFname])+"\t")
+                    f.write(str(TPvalue[geneid][TFname])+"\n")
                   
 
 parser = argparse.ArgumentParser(description='manual to this script')
