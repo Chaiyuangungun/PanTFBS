@@ -89,7 +89,7 @@ def write_TFnumbers(samples_file,jaspar_database_pathway,gene_ids,out_file)  :
                     f.write(TFname+"\t")
                     for sample in samples:
                         f.write(TFsums[sample][geneid][TFname]+"\t")
-                    f.write(str(Pvalue[geneid][TFname])+"\t")
+                    f.write(str(Pvalue[geneid][TFname])+"\n")
                   
 
 parser = argparse.ArgumentParser(description='manual to this script')
