@@ -208,7 +208,7 @@ def write_TF_sites(promoter_TF_sites,out_file):#书写结果文件
             for TF_id in dict[gene_id]: 
                 new_promoter_TF_sites[gene_id][TF_id] = dict[gene_id][TF_id]
                 TF_ids.append(TF_id)
-            new_promoter_TF_sites[gene_id][TF_id] = list(set(new_promoter_TF_sites[gene_id][TF_id]))
+                new_promoter_TF_sites[gene_id][TF_id] = list(set(new_promoter_TF_sites[gene_id][TF_id]))
     TF_ids = list(set(TF_ids))
     with open(out_file+".TFids.genome.sites","w") as f1:
         f1.write("geneid\tTFid\tchr\tstart\tend\tdirection\tTFseq\tscore\n")
